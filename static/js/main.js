@@ -48,12 +48,15 @@ function make_swirly(x, y, r_start, r_converge, velocity) {
 
         "draw": function () {
             var i;
+            build = []
             for (i = 1; i < this.past_points.length; i++) {
                 var intensity = this.max_intensity * (i - 1) / this.max_angles;
                 var previous_point = this.past_points[i - 1];
                 var current_point = this.past_points[i];
-                this.arc_from_to(previous_point, current_point, "rgb(0,0," + intensity + ")");
+                build.push({"start": previous_point, "end": current_point, "color": "rgb(0,0," + intensity + ")"})
             }
+
+            return build;
         },
 
         "compute_point": function (angle, radius) {
@@ -80,7 +83,7 @@ var swirlies = [];
 
 function setup() {
     var i;
-    for (i = 0; i < 15; i++) {
+    for (i = 0; i < 40; i++) {
         var start_radius = Math.random() * 50 + 30;
         var target_radius = Math.random() * 200 + 30;
         var velocity = Math.random() * 140 + 60;
@@ -90,11 +93,46 @@ function setup() {
 }
 var lastLoop = new Date().getTime();
 
+function drawLines(drawables_by_color) {
+    for (var color in drawables_by_color) {
+        if (drawables_by_color.hasOwnProperty(color)) {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            for (i = 0; i < drawables_by_color[color].length; i++) {
+                var drawable = drawables_by_color[color][i];
+                var start_point = drawable.start;
+                var end_point   = drawable.end;
+                ctx.moveTo(start_point.x, start_point.y);
+                ctx.lineTo(end_point.x, end_point.y);
+            }
+            ctx.stroke();
+        }
+    }
+}
+
+function build_drawable_list(drawables_by_color) {
+    var drawable_list = []
+
+    for (i = 0; i < swirlies.length; i++) {
+        drawable_list.push.apply(drawable_list, swirlies[i].draw());
+    }
+    for (i = 0; i < drawable_list.length; i++) {
+        var drawable = drawable_list[i];
+
+        if (!drawables_by_color.hasOwnProperty(drawable.color)) {
+            drawables_by_color[drawable.color] = []
+        }
+
+        drawables_by_color[drawable.color].push(drawable);
+    }
+
+    return drawable_list;
+}
 
 function loop() {
     var thisLoop = new Date().getTime();
     var fps = Math.round(1000 / (thisLoop - lastLoop));
-    var i;
+    var i,j;
     lastLoop = thisLoop;
     document.getElementById("details").innerHTML = fps;
     for (i = 0; i < swirlies.length; i++) {
@@ -103,9 +141,11 @@ function loop() {
 
     clear();
 
-    for (i = 0; i < swirlies.length; i++) {
-        swirlies[i].draw();
-    }
+    var drawables_by_color = {};
+    var darable_list = build_drawable_list(drawables_by_color);
+
+    ctx.lineWidth = 2;
+    drawLines(drawables_by_color);
 }
 
 setup();
